@@ -1,0 +1,29 @@
+{
+  "references": [{"path": "../shared-generic"}],
+  "compilerOptions": {
+    "paths": {
+      "@shared-generic": ["../shared-generic/dist"],
+    },
+    "composite": true,                                /* Enable constraints that allow a TypeScript project to be used with project references. */
+    "target": "ES2022",                                  /* Set the JavaScript language version for emitted JavaScript and include compatible library declarations. */
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,                             /* Specify what module code is generated. */
+    "rootDir": "./src",                                     /* Specify the root folder within your */
+    "outDir": "./dist",
+    "declaration": true,
+    "declarationMap": true,
+    "declarationDir": "./dist",
+    "removeComments": true,
+    "sourceMap": true,
+    "sourceRoot": "./src",
+    "noEmit": false,                                   /* Disable emitting files from a compilation. */
+    "forceConsistentCasingInFileNames": true,            /* Ensure that casing is correct in imports. */
+    "strict": true,                                      /* Enable all strict type-checking options. */
+    "exactOptionalPropertyTypes": true,               /* Interpret optional property types as written*/
+    "noFallthroughCasesInSwitch": true,               /* Enable error reporting for fallthrough cases in switch statements. */
+    "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
+  },
+  "include": ["src/**/*"]
+}
