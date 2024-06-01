@@ -1,3 +1,3 @@
-# Knowledge Network Library
+# Term Rewriting LibraryEee
 
-A library for developing knowledge driven applications.
+An attempt to efficiently implement symbolic term rewriting for TypeScript data structures. Currently a work in progress.
