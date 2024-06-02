@@ -1,6 +1,36 @@
-import { clone, hash, HashString, Hashable, RelationMap, traverseDepthFirst } from "@shared-generic";
+import { clone, hash, HashString, Hashable, RelationMap, traverseDepthFirst, Assert, TypeEq } from "@shared-generic";
 
-type SubObjectMaps<ChildrenKey extends string, T extends { [Key in ChildrenKey]: T[] }> = {
+// type TExpression<ChildrenKey extends string, TypeKey extends string, TypeConstants extends string,  T extends Hashable> = {[Key in TypeKey]: TypeConstants}  { [Key in ChildrenKey]: T[] };
+
+type TExpression<ChildrenKey extends string, T extends Hashable & { type: string } & { [Key in ChildrenKey]: T[] }> = T;
+
+type AlgOperation = {
+    type: "plus" | "times" | "minus" | "divide" | "equals";
+    children: AlgExpression[];
+};
+
+type AlgNumber = {
+    type: "value";
+    value: number;
+    children: never[];
+};
+
+type AlgVariable = {
+    type: "variable";
+    // The variable name
+    value: string;
+    children: never[];
+};
+
+type AlgExpression = AlgOperation | AlgNumber | AlgVariable;
+
+// IF Alg Expression is not a valid T Expression this will throw and error.
+type AlgTExpression = TExpression<"children", AlgExpression>;
+
+// Demonstrates the AlgExpression and AlgTExpression are equivalent types
+type Validate = Assert<TypeEq<AlgExpression, AlgTExpression>>;
+
+type SubObjectMaps<ChildrenKey extends string, T extends Hashable & { [Key in ChildrenKey]: T[] }> = {
     // Maps T to a canonical object in which the child objects been replaced by their hash strings.
     hashToTruncatedObject: Map<HashString, Omit<T, ChildrenKey> & { [Key in ChildrenKey]: HashString[] }>;
 
