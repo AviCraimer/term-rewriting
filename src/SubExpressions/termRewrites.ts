@@ -1,8 +1,8 @@
-import { clone, hash, HashString, Hashable, RelationMap, traverseDepthFirst, Assert, TypeEq } from "@shared-generic";
+import { clone, hash, HashString, Hashable, RelationMap, traverseDepthFirst, Assert, TypeEq, LiteralString } from "@shared-generic";
 
-// type TExpression<ChildrenKey extends string, TypeKey extends string, TypeConstants extends string,  T extends Hashable> = {[Key in TypeKey]: TypeConstants}  { [Key in ChildrenKey]: T[] };
+// type TExpression<CK extends string, TypeKey extends string, TypeConstants extends string,  T extends Hashable> = {[Key in TypeKey]: TypeConstants}  { [Key in CK]: T[] };
 
-type TExpression<ChildrenKey extends string, T extends Hashable & { type: string } & { [Key in ChildrenKey]: T[] }> = T;
+// type TExpression<CK extends string, T extends Hashable & { type: string } & { [Key in CK]: T[] }> = T;
 
 type AlgOperation = {
     type: "plus" | "times" | "minus" | "divide" | "equals";
@@ -24,15 +24,19 @@ type AlgVariable = {
 
 type AlgExpression = AlgOperation | AlgNumber | AlgVariable;
 
-// IF Alg Expression is not a valid T Expression this will throw and error.
-type AlgTExpression = TExpression<"children", AlgExpression>;
+// Demonstrates the AlgExpression is non-empty
+type Validate1 = Assert<AlgExpression extends never ? false : true>;
 
-// Demonstrates the AlgExpression and AlgTExpression are equivalent types
-type Validate = Assert<TypeEq<AlgExpression, AlgTExpression>>;
+// Meets the type constraint
+type Validate2 = Assert<AlgExpression extends TypedHashable & { children: AlgExpression[] } ? true : false>;
 
-type SubObjectMaps<ChildrenKey extends string, T extends Hashable & { [Key in ChildrenKey]: T[] }> = {
+// Note, we need the object type here to rule out literals for the spread operation below. We also need to include Hashable to ensure that any properties with literal values are hashable literals.
+type TypedHashable = object & Hashable & { type: string };
+
+// CK stands for ChildrenKey
+type SubObjectMaps<CK extends string, T extends TypedHashable & { [Key in CK]: T[] }> = {
     // Maps T to a canonical object in which the child objects been replaced by their hash strings.
-    hashToTruncatedObject: Map<HashString, Omit<T, ChildrenKey> & { [Key in ChildrenKey]: HashString[] }>;
+    hashToTruncatedObject: Map<HashString, Omit<T, CK> & { [Key in CK]: HashString[] }>;
 
     // Goes from hashes without children to hashes with children. This facilitates wildcard matching.
     hashNoChildrenToHash: Map<HashString, Set<HashString>>;
@@ -41,12 +45,12 @@ type SubObjectMaps<ChildrenKey extends string, T extends Hashable & { [Key in Ch
     parentChildRelation: RelationMap<HashString, HashString>;
 };
 
-const getEmptySubObjectMaps = <ChildrenKey extends string, T extends { [Key in ChildrenKey]: T[] }>(): SubObjectMaps<ChildrenKey, T> =>
+const getEmptySubObjectMaps = <const CK extends string, T extends TypedHashable & { [Key in CK]: T[] }>(childrenKey: LiteralString<CK>): SubObjectMaps<CK, T> =>
     ({
         hashToTruncatedObject: new Map(),
         hashNoChildrenToHash: new Map(),
         parentChildRelation: new RelationMap(),
-    } as SubObjectMaps<ChildrenKey, T>);
+    } as SubObjectMaps<CK, T>);
 
 // When mapping to a set, this lets you add a value inside a set, and when necessary initalize the set.
 const mapAdd =
@@ -60,9 +64,9 @@ const mapAdd =
 
 // This returns a function that assumes that the hashes of all children are already computed and stored in the nodeToHashes map.
 const getTruncateChildren =
-    <ChildrenKey extends string>(childrenKey: ChildrenKey) =>
-    <T extends { [Key in ChildrenKey]: T[] }>(nodeToHashes: Map<T, HashString>) =>
-    (node: T): Omit<T, ChildrenKey> & { [Key in ChildrenKey]: HashString[] } => {
+    <const CK extends string>(childrenKey: LiteralString<CK>) =>
+    <T extends TypedHashable & { [Key in CK]: T[] }>(nodeToHashes: Map<T, HashString>) =>
+    (node: T): Omit<T, CK> & { [Key in CK]: HashString[] } => {
         const children = node[childrenKey];
 
         const hashedChildren = children.map((child) => {
@@ -77,9 +81,9 @@ const getTruncateChildren =
     };
 
 const getSubObjectMaps =
-    <ChildrenKey extends string>(childrenKey: ChildrenKey) =>
-    <T extends { [Key in ChildrenKey]: T[] }>(root: T): SubObjectMaps<ChildrenKey, T> => {
-        const subObjectMaps = getEmptySubObjectMaps<ChildrenKey, T>();
+    <const CK extends string>(childrenKey: LiteralString<CK>) =>
+    <T extends TypedHashable & { [Key in CK]: T[] }>(root: T): SubObjectMaps<CK, T> => {
+        const subObjectMaps = getEmptySubObjectMaps<CK, T>(childrenKey);
 
         const { hashToTruncatedObject, hashNoChildrenToHash, parentChildRelation } = subObjectMaps;
 
@@ -101,7 +105,7 @@ const getSubObjectMaps =
             hashToTruncatedObject.get(nodeHash) ?? hashToTruncatedObject.set(nodeHash, truncated);
 
             // We remove the children property to get the no children object
-            let noChildren = clone(truncated) as Omit<T, ChildrenKey>;
+            let noChildren = clone(truncated) as Omit<T, CK>;
             delete truncated[childrenKey];
 
             // We hash the no children object
@@ -147,28 +151,3 @@ const getSubObjectMaps =
 
         return subObjectMaps;
     };
-
-// type ExpressionTree<ChildrenKey extends string = "children"> = Hashable & { [Key in ChildrenKey]: ExpressionTree<ChildrenKey>[] }
-
-// const subExpressions =
-//     <ChildrenKey extends string, T extends ExpressionTree<ChildrenKey>>(childrenKey: ChildrenKey) =>
-//     (object: T, excludeKeys: string[] = []) => {
-//         const noChildrenHashToChildrenHash: Map<string, Set<string>> = new Map();
-//         const childrenHashToObject: Map<string, T> = new Map();
-//         const parentChild : RelationMap<
-
-//         // The type of the object after children are replaced by hashes.
-//         type HashedChildren = Omit<T, ChildrenKey> & { ChildrenKey: string[] };
-
-//         function inner(object: T) {
-//             const hashSubExpression = (object: Hashable) => hash(object);
-//             const hashNoChildren = (object: Hashable) => hash(object, [childrenKey, ...excludeKeys]);
-
-//             const children = object[childrenKey];
-
-//             children.map((child) => {
-//                 if (child[childrenKey])
-
-//             });
-//         }
-//     };
